@@ -1,36 +1,53 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shuffle, RefreshCw, Printer, ArrowRight, AlertCircle } from 'lucide-react';
+import { Shuffle, RefreshCw, Printer, ArrowRight, AlertCircle, Edit2, Check, X } from 'lucide-react';
 import { useTournamentStore } from '../store';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { generateSwissPairing, generateSingleElimination, generateRoundRobin } from '../utils/pairing';
+import { generateSwissPairing, generateSingleElimination, generateRoundRobinRound, generateSingleEliminationNextRound } from '../utils/pairing';
 import { printTableLabels } from '../utils/export';
 import { Match } from '../types';
 
 export default function Pairing() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tournaments, players, matches, setMatches, addMatches, updateTournament, playerStats, calculateStats } = useTournamentStore();
+  const { tournaments, players, matches, setMatches, addMatches, updateMatch, updateTournament, playerStats, calculateStats } = useTournamentStore();
   
   const tournament = tournaments.find(t => t.id === id);
   const tournamentPlayers = players.filter(p => p.tournamentId === id);
   const activePlayers = tournamentPlayers.filter(p => p.status === 'active');
   const currentRoundMatches = matches.filter(m => m.tournamentId === id && m.round === tournament?.currentRound);
   const allRoundMatches = matches.filter(m => m.tournamentId === id);
+  const prevRoundMatches = matches.filter(m => m.tournamentId === id && m.round === (tournament?.currentRound || 0) - 1);
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [editingTableId, setEditingTableId] = useState<string | null>(null);
+  const [editingTableNumber, setEditingTableNumber] = useState<number>(0);
 
   const canGenerate = useMemo(() => {
     if (!tournament) return false;
     if (activePlayers.length < 2) return false;
-    if (tournament.currentRound > 0 && currentRoundMatches.some(m => !m.completed && m.tableNumber > 0)) {
-      return false;
-    }
+    
+    if (tournament.currentRound === 0) return true;
+    
     if (tournament.currentRound >= tournament.totalRounds) return false;
+    
+    if (tournament.format === 'single_elimination') {
+      const prevMatches = matches.filter(m => m.tournamentId === id && m.round === tournament.currentRound);
+      if (prevMatches.length === 0) return false;
+      const allCompleted = prevMatches.every(m => m.completed || m.player1Result === 'bye');
+      if (!allCompleted) return false;
+      const winners = prevMatches.filter(m => m.player1Result === 'bye' || m.completed).length;
+      if (winners <= 1) return false;
+    } else {
+      if (currentRoundMatches.some(m => !m.completed && m.tableNumber > 0)) {
+        return false;
+      }
+    }
+    
     return true;
-  }, [tournament, activePlayers, currentRoundMatches]);
+  }, [tournament, activePlayers, currentRoundMatches, matches, id]);
 
   const handleGeneratePairing = () => {
     if (!tournament || !canGenerate || !id) return;
@@ -54,22 +71,18 @@ export default function Pairing() {
         case 'single_elimination':
           if (tournament.currentRound === 0) {
             newMatches = generateSingleElimination(tournamentPlayers, id);
+          } else {
+            const prevMatches = matches.filter(m => m.tournamentId === id && m.round === tournament.currentRound);
+            newMatches = generateSingleEliminationNextRound(prevMatches, id, nextRound);
           }
           break;
         case 'round_robin':
-          if (tournament.currentRound === 0) {
-            const allMatches = generateRoundRobin(tournamentPlayers, id, tournament.totalRounds);
-            newMatches = allMatches[0] || [];
-          }
+          newMatches = generateRoundRobinRound(tournamentPlayers, id, nextRound);
           break;
       }
 
       if (newMatches.length > 0) {
-        if (tournament.currentRound === 0) {
-          setMatches(newMatches);
-        } else {
-          addMatches(newMatches);
-        }
+        addMatches(newMatches);
         updateTournament(id, { currentRound: nextRound });
         calculateStats();
       }
@@ -84,7 +97,39 @@ export default function Pairing() {
     
     const filteredMatches = allRoundMatches.filter(m => m.round !== tournament.currentRound);
     setMatches(filteredMatches);
-    handleGeneratePairing();
+    
+    setTimeout(() => {
+      let newMatches: Match[] = [];
+      const round = tournament.currentRound;
+
+      switch (tournament.format) {
+        case 'swiss':
+          newMatches = generateSwissPairing(
+            tournamentPlayers,
+            playerStats,
+            id,
+            round,
+            tournament.settings.avoidRepeatMatches
+          );
+          break;
+        case 'single_elimination':
+          if (round === 1) {
+            newMatches = generateSingleElimination(tournamentPlayers, id);
+          } else {
+            const prevMatches = matches.filter(m => m.tournamentId === id && m.round === round - 1);
+            newMatches = generateSingleEliminationNextRound(prevMatches, id, round);
+          }
+          break;
+        case 'round_robin':
+          newMatches = generateRoundRobinRound(tournamentPlayers, id, round);
+          break;
+      }
+
+      if (newMatches.length > 0) {
+        addMatches(newMatches);
+        calculateStats();
+      }
+    }, 100);
   };
 
   const handlePrintLabels = () => {
@@ -98,8 +143,33 @@ export default function Pairing() {
     return player?.name || '未知选手';
   };
 
+  const handleStartEditTable = (match: Match) => {
+    setEditingTableId(match.id);
+    setEditingTableNumber(match.tableNumber);
+  };
+
+  const handleSaveTableNumber = (matchId: string) => {
+    if (editingTableNumber >= 0) {
+      updateMatch(matchId, { tableNumber: editingTableNumber });
+    }
+    setEditingTableId(null);
+  };
+
+  const handleCancelEditTable = () => {
+    setEditingTableId(null);
+  };
+
   const normalMatches = currentRoundMatches.filter(m => m.tableNumber > 0);
   const byeMatches = currentRoundMatches.filter(m => m.tableNumber === 0);
+
+  const completedRounds = useMemo(() => {
+    if (!tournament) return [];
+    const rounds: number[] = [];
+    for (let r = 1; r < tournament.currentRound; r++) {
+      rounds.push(r);
+    }
+    return rounds;
+  }, [tournament]);
 
   if (!tournament) {
     return (
@@ -143,6 +213,27 @@ export default function Pairing() {
         </div>
       </div>
 
+      {completedRounds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">历史轮次</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {completedRounds.map(round => {
+                const roundMatches = matches.filter(m => m.tournamentId === id && m.round === round);
+                const completedCount = roundMatches.filter(m => m.completed).length;
+                return (
+                  <Badge key={round} variant="info" className="text-sm py-1.5">
+                    第 {round} 轮：{completedCount}/{roundMatches.length} 场
+                  </Badge>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {tournament.currentRound === 0 ? (
         <Card>
           <CardContent className="text-center py-16">
@@ -179,7 +270,41 @@ export default function Pairing() {
               <Card key={match.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <Badge variant="info">第 {match.tableNumber} 桌</Badge>
+                    {editingTableId === match.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          value={editingTableNumber}
+                          onChange={(e) => setEditingTableNumber(parseInt(e.target.value) || 1)}
+                          className="w-20 px-2 py-1 text-center bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveTableNumber(match.id)}
+                          className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          onClick={handleCancelEditTable}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="info">第 {match.tableNumber} 桌</Badge>
+                        <button
+                          onClick={() => handleStartEditTable(match)}
+                          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+                          title="修改桌号"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
+                    )}
                     {match.completed && <Badge variant="success">已完成</Badge>}
                   </div>
                   <div className="flex items-center justify-between">

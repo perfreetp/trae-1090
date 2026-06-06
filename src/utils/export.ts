@@ -20,7 +20,7 @@ export const exportRankingToCSV = (
   tournament: Tournament,
   rankedPlayers: PlayerWithStats[]
 ): string => {
-  const header = ['排名', '选手名称', '积分', '胜', '负', '平', '轮空', '胜局', '负局', '对手胜率', '游戏胜率'];
+  const header = ['排名', '选手名称', '积分', '胜', '负', '平', '轮空', '弃权', '胜局', '负局', '对手胜率', '游戏胜率'];
   
   const rows = rankedPlayers.map(player => [
     player.rank || 0,
@@ -30,6 +30,7 @@ export const exportRankingToCSV = (
     player.stats.losses,
     player.stats.draws,
     player.stats.byes,
+    player.stats.forfeits,
     player.stats.gameWinCount,
     player.stats.gameLossCount,
     (player.stats.tiebreakers.opponentWinRate * 100).toFixed(2) + '%',

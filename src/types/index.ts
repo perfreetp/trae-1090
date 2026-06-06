@@ -45,6 +45,7 @@ export interface PlayerStats {
   losses: number;
   draws: number;
   byes: number;
+  forfeits: number;
   gameWinCount: number;
   gameLossCount: number;
   opponents: string[];

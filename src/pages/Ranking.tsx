@@ -132,6 +132,7 @@ export default function Ranking() {
                 <TableHead className="text-center">负</TableHead>
                 <TableHead className="text-center">平</TableHead>
                 <TableHead className="text-center">轮空</TableHead>
+                <TableHead className="text-center">弃权</TableHead>
                 {tournament.settings.showTiebreakers && (
                   <>
                     <TableHead className="text-center">对手胜率</TableHead>
@@ -156,6 +157,7 @@ export default function Ranking() {
                   <TableCell className="text-center text-red-400">{player.stats.losses}</TableCell>
                   <TableCell className="text-center text-amber-400">{player.stats.draws}</TableCell>
                   <TableCell className="text-center text-blue-400">{player.stats.byes}</TableCell>
+                  <TableCell className="text-center text-orange-400">{player.stats.forfeits}</TableCell>
                   {tournament.settings.showTiebreakers && (
                     <>
                       <TableCell className="text-center">

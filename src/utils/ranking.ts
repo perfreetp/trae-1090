@@ -17,6 +17,7 @@ export const calculatePlayerStats = (
       losses: 0,
       draws: 0,
       byes: 0,
+      forfeits: 0,
       gameWinCount: 0,
       gameLossCount: 0,
       opponents: [],
@@ -58,12 +59,16 @@ export const calculatePlayerStats = (
           stats.losses++;
           stats.points += scoring.lossPoints;
           break;
+        case 'forfeit':
+          stats.losses++;
+          stats.forfeits++;
+          stats.points += scoring.lossPoints;
+          break;
         case 'draw':
           stats.draws++;
           stats.points += scoring.drawPoints;
           break;
         case 'bye':
-        case 'forfeit':
           stats.byes++;
           stats.points += scoring.byePoints;
           break;
@@ -127,6 +132,7 @@ export const sortPlayersByRank = (
       losses: 0,
       draws: 0,
       byes: 0,
+      forfeits: 0,
       gameWinCount: 0,
       gameLossCount: 0,
       opponents: [],

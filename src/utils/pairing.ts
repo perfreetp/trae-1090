@@ -168,6 +168,63 @@ export const generateSingleElimination = (
   return matches;
 };
 
+export const generateSingleEliminationNextRound = (
+  prevRoundMatches: Match[],
+  tournamentId: string,
+  nextRound: number
+): Match[] => {
+  const winners: string[] = [];
+
+  prevRoundMatches.forEach(match => {
+    if (match.player1Result === 'bye' && match.player1Id) {
+      winners.push(match.player1Id);
+    } else if (match.completed) {
+      if (match.player1Result === 'win' && match.player1Id) {
+        winners.push(match.player1Id);
+      } else if (match.player2Result === 'win' && match.player2Id) {
+        winners.push(match.player2Id);
+      }
+    }
+  });
+
+  const matches: Match[] = [];
+  let tableNumber = 1;
+
+  for (let i = 0; i < winners.length; i += 2) {
+    if (i + 1 < winners.length) {
+      matches.push({
+        id: generateId(),
+        tournamentId,
+        round: nextRound,
+        tableNumber: tableNumber++,
+        player1Id: winners[i],
+        player2Id: winners[i + 1],
+        player1Result: null,
+        player2Result: null,
+        player1Games: 0,
+        player2Games: 0,
+        completed: false
+      });
+    } else {
+      matches.push({
+        id: generateId(),
+        tournamentId,
+        round: nextRound,
+        tableNumber: 0,
+        player1Id: winners[i],
+        player2Id: null,
+        player1Result: 'bye',
+        player2Result: null,
+        player1Games: 0,
+        player2Games: 0,
+        completed: true
+      });
+    }
+  }
+
+  return matches;
+};
+
 export const generateRoundRobin = (
   players: Player[],
   tournamentId: string,
@@ -232,4 +289,66 @@ export const generateRoundRobin = (
   }
 
   return allRoundMatches;
+};
+
+export const generateRoundRobinRound = (
+  players: Player[],
+  tournamentId: string,
+  roundNumber: number
+): Match[] => {
+  const activePlayers = players.filter(p => p.status === 'active');
+
+  let playerList = [...activePlayers];
+  if (playerList.length % 2 !== 0) {
+    playerList.push({ id: 'bye', name: '轮空', status: 'bye' } as Player);
+  }
+
+  const n = playerList.length;
+
+  for (let r = 0; r < roundNumber - 1; r++) {
+    const fixed = playerList[0];
+    const rotated = [fixed, ...playerList.slice(n - 1), ...playerList.slice(1, n - 1)];
+    playerList = rotated;
+  }
+
+  const matches: Match[] = [];
+  let tableNumber = 1;
+
+  for (let i = 0; i < n / 2; i++) {
+    const player1 = playerList[i];
+    const player2 = playerList[n - 1 - i];
+
+    if (player1.id === 'bye' || player2.id === 'bye') {
+      const actualPlayer = player1.id === 'bye' ? player2 : player1;
+      matches.push({
+        id: generateId(),
+        tournamentId,
+        round: roundNumber,
+        tableNumber: 0,
+        player1Id: actualPlayer.id,
+        player2Id: null,
+        player1Result: 'bye',
+        player2Result: null,
+        player1Games: 0,
+        player2Games: 0,
+        completed: true
+      });
+    } else {
+      matches.push({
+        id: generateId(),
+        tournamentId,
+        round: roundNumber,
+        tableNumber: tableNumber++,
+        player1Id: player1.id,
+        player2Id: player2.id,
+        player1Result: null,
+        player2Result: null,
+        player1Games: 0,
+        player2Games: 0,
+        completed: false
+      });
+    }
+  }
+
+  return matches;
 };
