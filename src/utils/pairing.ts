@@ -132,7 +132,7 @@ export const generateSingleElimination = (
         id: generateId(),
         tournamentId,
         round,
-        tableNumber: tableNumber++,
+        tableNumber: 0,
         player1Id: firstRoundPlayers[i].id,
         player2Id: null,
         player1Result: 'bye',

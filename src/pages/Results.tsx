@@ -6,7 +6,7 @@ import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { MatchResult } from '../types';
-import { sortPlayersByRank } from '../utils/ranking';
+import { sortPlayersByRank, findSingleEliminationChampion } from '../utils/ranking';
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
@@ -110,7 +110,8 @@ export default function Results() {
   const completedRounds = useMemo(() => {
     if (!tournament) return [];
     const rounds: number[] = [];
-    for (let r = 1; r < tournament.currentRound; r++) {
+    const maxRound = tournament.status === 'completed' ? tournament.currentRound : tournament.currentRound - 1;
+    for (let r = 1; r <= maxRound; r++) {
       rounds.push(r);
     }
     return rounds;
@@ -127,7 +128,13 @@ export default function Results() {
   }
 
   if (tournament.status === 'completed') {
-    const champion = rankedPlayers[0];
+    let champion = rankedPlayers[0];
+    if (tournament.format === 'single_elimination') {
+      const finalWinner = findSingleEliminationChampion(id!, tournamentMatches, tournamentPlayers);
+      if (finalWinner) {
+        champion = rankedPlayers.find(p => p.id === finalWinner.id) || { ...finalWinner, stats: champion?.stats };
+      }
+    }
     return (
       <div className="space-y-6">
         <Card className="border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent">

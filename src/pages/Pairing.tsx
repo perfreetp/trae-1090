@@ -8,7 +8,7 @@ import Badge from '../components/ui/Badge';
 import { generateSwissPairing, generateSingleElimination, generateRoundRobinRound, generateSingleEliminationNextRound } from '../utils/pairing';
 import { printTableLabels } from '../utils/export';
 import { Match } from '../types';
-import { sortPlayersByRank } from '../utils/ranking';
+import { sortPlayersByRank, findSingleEliminationChampion } from '../utils/ranking';
 
 export default function Pairing() {
   const { id } = useParams<{ id: string }>();
@@ -67,7 +67,8 @@ export default function Pairing() {
   const completedRounds = useMemo(() => {
     if (!tournament) return [];
     const rounds: number[] = [];
-    for (let r = 1; r < tournament.currentRound; r++) {
+    const maxRound = tournament.status === 'completed' ? tournament.currentRound : tournament.currentRound - 1;
+    for (let r = 1; r <= maxRound; r++) {
       rounds.push(r);
     }
     return rounds;
@@ -197,7 +198,13 @@ export default function Pairing() {
   }
 
   if (tournament.status === 'completed') {
-    const champion = rankedPlayers[0];
+    let champion = rankedPlayers[0];
+    if (tournament.format === 'single_elimination') {
+      const finalWinner = findSingleEliminationChampion(id!, tournamentMatches, tournamentPlayers);
+      if (finalWinner) {
+        champion = rankedPlayers.find(p => p.id === finalWinner.id) || { ...finalWinner, stats: champion?.stats };
+      }
+    }
     return (
       <div className="space-y-6">
         <Card className="border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent">

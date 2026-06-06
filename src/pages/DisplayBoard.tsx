@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Maximize2, Minimize2, Play, Pause, RefreshCw, Trophy, Medal } from 'lucide-react';
 import { useTournamentStore } from '../store';
-import { sortPlayersByRank } from '../utils/ranking';
+import { sortPlayersByRank, findSingleEliminationChampion } from '../utils/ranking';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -35,11 +35,18 @@ export default function DisplayBoard() {
 
   const champion = useMemo(() => {
     if (!tournament || tournament.status !== 'completed') return null;
-    if (tournament.format === 'single_elimination' && rankedPlayers.length > 0) {
+    if (tournament.format === 'single_elimination') {
+      const finalWinner = findSingleEliminationChampion(id!, matches, players);
+      if (finalWinner) {
+        const rankedWinner = rankedPlayers.find(p => p.id === finalWinner.id);
+        if (rankedWinner) return rankedWinner;
+      }
+    }
+    if (rankedPlayers.length > 0) {
       return rankedPlayers[0];
     }
     return null;
-  }, [tournament, rankedPlayers]);
+  }, [tournament, rankedPlayers, id, matches, players]);
 
   useEffect(() => {
     if (!autoScroll || currentRoundMatches.length === 0) return;

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Trophy, Medal, Search, User, ArrowRight } from 'lucide-react';
 import { useTournamentStore } from '../store';
-import { sortPlayersByRank, getPlayerMatches } from '../utils/ranking';
+import { sortPlayersByRank, getPlayerMatches, findSingleEliminationChampion } from '../utils/ranking';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -23,12 +23,26 @@ export default function Ranking() {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   const rankedPlayers = useMemo(() => {
-    return sortPlayersByRank(
+    let sorted = sortPlayersByRank(
       tournamentPlayers,
       playerStats,
       tournament?.settings.showTiebreakers ?? true
     );
-  }, [tournamentPlayers, playerStats, tournament]);
+
+    if (tournament?.status === 'completed' && tournament?.format === 'single_elimination') {
+      const finalWinner = findSingleEliminationChampion(id!, tournamentMatches, tournamentPlayers);
+      if (finalWinner) {
+        const winnerIdx = sorted.findIndex(p => p.id === finalWinner.id);
+        if (winnerIdx > 0) {
+          const [winner] = sorted.splice(winnerIdx, 1);
+          sorted.unshift(winner);
+          sorted.forEach((p, i) => { p.rank = i + 1; });
+        }
+      }
+    }
+
+    return sorted;
+  }, [tournamentPlayers, playerStats, tournament, id, tournamentMatches]);
 
   const filteredPlayers = useMemo(() => {
     if (!searchQuery.trim()) return rankedPlayers;

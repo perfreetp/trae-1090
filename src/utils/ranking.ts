@@ -187,3 +187,30 @@ export const getPlayerMatches = (
     })
     .sort((a, b) => a.round - b.round);
 };
+
+export const findSingleEliminationChampion = (
+  tournamentId: string,
+  allMatches: Match[],
+  allPlayers: Player[]
+): Player | null => {
+  const tournamentMatches = allMatches.filter(m => m.tournamentId === tournamentId);
+  if (tournamentMatches.length === 0) return null;
+
+  const maxRound = Math.max(...tournamentMatches.map(m => m.round));
+  const finalMatches = tournamentMatches.filter(m => m.round === maxRound && m.tableNumber > 0);
+  
+  if (finalMatches.length === 0) return null;
+  
+  const finalMatch = finalMatches[0];
+  if (!finalMatch.completed) return null;
+
+  let championId: string | null = null;
+  if (finalMatch.player1Result === 'win') {
+    championId = finalMatch.player1Id;
+  } else if (finalMatch.player2Result === 'win') {
+    championId = finalMatch.player2Id;
+  }
+
+  if (!championId) return null;
+  return allPlayers.find(p => p.id === championId) || null;
+};
