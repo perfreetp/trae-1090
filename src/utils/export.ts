@@ -48,17 +48,20 @@ export const exportMatchesToCSV = (
   const playerMap = new Map(players.map(p => [p.id, p]));
   const header = ['轮次', '桌号', '选手1', '选手2', '选手1结果', '选手2结果', '选手1小分', '选手2小分', '状态'];
 
-  const rows = matches.map(match => [
-    match.round,
-    match.tableNumber === 0 ? '轮空' : match.tableNumber,
-    match.player1Id ? playerMap.get(match.player1Id)?.name || '' : '',
-    match.player2Id ? playerMap.get(match.player2Id)?.name || '' : '',
-    getResultName(match.player1Result),
-    getResultName(match.player2Result),
-    match.player1Games,
-    match.player2Games,
-    match.completed ? '已完成' : '进行中'
-  ]);
+  const rows = matches.map(match => {
+    const isBye = match.tableNumber === 0;
+    return [
+      match.round,
+      isBye ? '轮空晋级' : match.tableNumber,
+      match.player1Id ? playerMap.get(match.player1Id)?.name || '' : '',
+      isBye ? '轮空晋级' : (match.player2Id ? playerMap.get(match.player2Id)?.name || '' : ''),
+      getResultName(match.player1Result),
+      isBye ? '-' : getResultName(match.player2Result),
+      match.player1Games,
+      match.player2Games,
+      match.completed ? '已完成' : '进行中'
+    ];
+  });
 
   return `赛事名称: ${tournament.name}\n赛制: ${getFormatName(tournament.format)}\n\n` + toCSV([header, ...rows]);
 };

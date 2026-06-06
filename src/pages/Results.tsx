@@ -315,7 +315,7 @@ export default function Results() {
                       平
                     </button>
                     <button
-                      onClick={() => handleSetForfeit(match.id, 2)}
+                      onClick={() => handleSetForfeit(match.id, 1)}
                       className={`px-3 py-1.5 text-xs rounded-md transition-colors ${match.player1Result === 'forfeit' ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
                     >
                       弃权
@@ -352,7 +352,7 @@ export default function Results() {
                       平
                     </button>
                     <button
-                      onClick={() => handleSetForfeit(match.id, 1)}
+                      onClick={() => handleSetForfeit(match.id, 2)}
                       className={`px-3 py-1.5 text-xs rounded-md transition-colors ${match.player2Result === 'forfeit' ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
                     >
                       弃权

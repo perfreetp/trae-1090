@@ -187,6 +187,19 @@ export default function Pairing() {
   const normalMatches = currentRoundMatches.filter(m => m.tableNumber > 0);
   const byeMatches = currentRoundMatches.filter(m => m.tableNumber === 0);
 
+  const getResultBadge = (result: string | null) => {
+    if (!result) return null;
+    const config: Record<string, { className: string; label: string }> = {
+      win: { className: 'bg-emerald-500/20 text-emerald-400', label: '胜' },
+      loss: { className: 'bg-red-500/20 text-red-400', label: '负' },
+      draw: { className: 'bg-amber-500/20 text-amber-400', label: '平' },
+      bye: { className: 'bg-blue-500/20 text-blue-400', label: '轮空' },
+      forfeit: { className: 'bg-orange-500/20 text-orange-400', label: '弃权' }
+    };
+    const { className, label } = config[result] || { className: 'bg-slate-500/20 text-slate-400', label: result };
+    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${className}`}>{label}</span>;
+  };
+
   if (!tournament) {
     return (
       <Card>
@@ -253,11 +266,13 @@ export default function Pairing() {
                           <div className="flex items-center gap-2">
                             <Badge variant="info" className="text-xs">第{match.tableNumber}桌</Badge>
                             <span className="text-white">{getPlayerName(match.player1Id)}</span>
+                            {getResultBadge(match.player1Result)}
                           </div>
                           <span className="text-slate-500 font-medium">
                             {match.player1Games} : {match.player2Games}
                           </span>
                           <div className="flex items-center gap-2">
+                            {getResultBadge(match.player2Result)}
                             <span className="text-white">{getPlayerName(match.player2Id)}</span>
                           </div>
                         </div>
